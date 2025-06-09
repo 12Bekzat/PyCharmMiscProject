@@ -10,6 +10,7 @@ from deepface import DeepFace
 import tempfile
 import os
 from datetime import datetime
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -65,7 +66,9 @@ async def recognize(data: ImageData):
 
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp:
             cv2.imwrite(temp.name, frame)
-            results = DeepFace.find(img_path=temp.name, db_path=KNOWN_FACES_DIR, enforce_detection=False)
+            results = DeepFace.find(img_path=temp.name, db_path=KNOWN_FACES_DIR, enforce_detection=True)
+
+        print('reses = ', results)
 
         names = []
         if len(results) > 0 and not results[0].empty:
@@ -109,5 +112,16 @@ def get_all_people():
                 name = os.path.splitext(filename)[0]
                 people.append(name)
         return {"people": people}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/person_photo/{name}")
+def get_person_photo(name: str):
+    try:
+        for ext in [".jpg", ".png"]:
+            filepath = os.path.join(KNOWN_FACES_DIR, f"{name}{ext}")
+            if os.path.exists(filepath):
+                return FileResponse(filepath, media_type="image/jpeg")
+        return {"error": "Фото не найдено"}
     except Exception as e:
         return {"error": str(e)}
